@@ -1,0 +1,91 @@
+﻿
+<!DOCTYPE html>
+<head>
+    <script src="~/Scripts/angular.js" type="text/javascript"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+
+<body class="container" ng-app="busListModule" ng-controller="busListController" ng-init="initApp()">
+    <h2>Bus List</h2>
+
+    <div class="modal fade" id="editBus">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Update status</h2>
+                </div>
+                <input type="text" placeholder="Current status" ng-model="selectedBus.status" />
+
+
+                <div class="modal-footer">
+                    <button class="btn btn-success" ng-click="updateBus()">Done!</button>
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+     
+    <table class="table table-striped">
+        <thead>
+            <tr><th>Bus name</th> <th>Capacity</th> <th>Remaining capacity</th> <th>Status</th><th>Action</th> </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="bus in availableBusList">
+                <td>{{bus.name}} </td>
+                <td>{{bus.capacity}} </td>
+                <td>{{bus.rem_vacancy}} </td>
+                <td>{{bus.status}} </td>
+                <td>
+                    <button class="btn btn-primary" ng-click="setSelectedBus(bus)">Update status</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+
+<script>
+
+
+    let app = angular.module('busListModule', [])
+    app.controller('busListController', ($scope, $http) => {
+         
+        $scope.availableBusList = []
+        $scope.selectedBus = {}
+        $scope.setSelectedBus = (bus) => {
+            $scope.selectedBus = { ...bus }
+            $('#editBus').modal('show')
+        }
+        $scope.addNew = function () {
+ 
+        }
+
+        $scope.updateBus = () => {
+            $http.post('/Bus/update', JSON.stringify($scope.selectedBus))
+                .then(data => {
+                    location.reload(true)
+                })
+        }
+         
+        
+        $scope.initApp = () => {
+            $scope.getAvailableBusList()
+           
+        }
+
+        $scope.getAvailableBusList = () => {
+            $http.get('/Bus/getAllBusList')
+                .then(({ data }) => {
+                    $scope.availableBusList = data;
+                    console.log(data)
+                })
+        }
+       
+        
+    })
+</script>
+

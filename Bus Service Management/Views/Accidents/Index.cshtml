@@ -1,0 +1,133 @@
+﻿
+<!DOCTYPE html>
+<head>
+    <script src="~/Scripts/angular.js" type="text/javascript"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+
+<body class="container" ng-app="accidentsModule" ng-controller="accidentsController" ng-init="initApp()">
+    <h2>Accident records</h2>
+
+    <div class="modal fade" id="addRecord">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Add record</h2>
+                </div>
+                <div class="modal-body">
+                    <form ng-submit="addNew()">
+                        <div class="form-group">
+                            <label for="reason">Reason:</label>
+                            <input type="text" class="form-control" ng-model="newRecord.reason">
+                        </div>
+                        <div class="form-group">
+                            <label for="road">Road:</label>
+                            <select name="road" ng-model="newRecord.roadId">
+                                <option ng-repeat="road in roads" value="{{road.Id}}">{{road.name}}</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="bus">Bus:</label>
+                            <select name="bus" ng-model="newRecord.roadId">
+                                <option ng-repeat="bus in availableBusList" value="{{bus.Id}}">{{bus.name}}</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="fatality">fatalities:</label>
+                            <input type="text" name="fatality" class="form-control" ng-model="newRecord.fatalities">
+
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Submit</button>
+                    </form>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-success" ng-click="updateBus()">Done!</button>
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <button class="btn btn-primary" ng-click="popupAddNew()">Add new</button>
+
+    <table class="table table-striped">
+        <thead>
+            <tr><th>Time</th> <th>Reason</th> <th>Road name</th> <th>Bus name</th>  </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="record in records">
+                <td>{{record.time}} </td>
+                <td>{{record.reason}} </td>
+                <td>{{record.roadName}} </td>
+                <td>{{record.busName}} </td>
+                 
+            </tr>
+        </tbody>
+    </table>
+</body>
+
+<script>
+
+
+    let app = angular.module('accidentsModule', [])
+    app.controller('accidentsController', ($scope, $http) => {
+        $scope.roads=[]
+        $scope.availableBusList = []
+        $scope.selectedBus = {}
+        $scope.records = []
+
+        $scope.newRecord = {}
+
+        $scope.popupAddNew = () => {
+            $('#addRecord').modal('show')
+        }
+         
+        $scope.addNew = function () {
+            $http.post('/Accidents/insert', JSON.stringify({ ...$scope.newRecord,time:(new Date())*1}))
+                .then(data => {
+                    location.reload(true)
+                })
+        }
+
+        $scope.getRecords = () => {
+            $http.get('/Accidents/getAll')
+                .then(({ data }) => {
+                    for (let record of data) {
+                        let time = new Date(record.time)
+                        record.time = time.toLocaleTimeString() + ',' + time.toLocaleDateString()
+                        
+                    }
+                    $scope.records = data
+                })
+        }
+
+
+        $scope.initApp = () => {
+            $scope.getRecords()
+            $scope.getAvailableBusList()
+            $scope.getRoads()
+        }
+        $scope.getRoads = () => {
+            $http.get('/Road/getRoads')
+                .then(({ data }) => {
+                    $scope.roads = (data)
+                })
+        }
+        $scope.getAvailableBusList = () => {
+            $http.get('/Bus/getAllBusList')
+                .then(({ data }) => {
+                    $scope.availableBusList = data;
+                    console.log(data)
+                })
+        }
+
+
+    })
+</script>
+

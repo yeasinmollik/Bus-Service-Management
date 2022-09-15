@@ -1,0 +1,115 @@
+﻿
+<!DOCTYPE html>
+<head>
+    <script src="~/Scripts/angular.js" type="text/javascript"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+
+<body class="container" ng-app="employeeListModule" ng-controller="employeeController" ng-init="initApp()">
+    <h2>Employee List</h2>
+
+    <div class="modal fade" id="employeeAdd">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Update Employee</h2>
+                </div>
+                <input type="text" placeholder="name" ng-model="currentEmployee.name" />
+                <input type="text" placeholder="phone" ng-model="currentEmployee.phone" />
+                <select ng-model="currentEmployee.employeeType">
+                    <option value="1">Admin</option>
+                    <option value="2">Mechanic</option>
+                    <option value="3">Terminal Manager</option>
+
+
+                </select>
+
+                <div class="modal-footer">
+                    <button class="btn btn-success" ng-click="doneAddEdit()">Done!</button>
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <button class="btn btn-primary" ng-click="popupAdd()">Add new</button>
+
+
+    <table class="table table-striped">
+        <thead>
+            <tr>  <th>Name</th> <th>Phone</th> <th>Designation</th> <th>Action</th> </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="employee in employees">
+                <td>{{employee.name}}</td>
+                <td>{{employee.phone}}</td>
+                <td>
+                    {{employee.designation}}
+                </td>
+                <td>
+                    <button class="btn btn-danger" ng-click="delete(employee)">Delete</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+
+<script>
+
+
+    let app = angular.module('employeeListModule', [])
+    app.controller('employeeController', ($scope, $http) => {
+        $scope.currentEmployee = {}
+        
+        $scope.employees = []
+        
+        
+        $scope.popupAdd  = function (newEmp) {
+            if (!newEmp) $scope.currentEmployee = {   }
+            else $scope.currentEmployee = { ...newEmp }
+            $('#employeeAdd').modal('show')
+
+        }
+
+        $scope.delete = (employee) => {
+            $http.post('/Employee/delete', JSON.stringify(employee))
+                .then(({ data }) => {
+                    location.reload(true)
+                })
+        }
+
+
+        $scope.initApp = () => {
+            $scope.getEmployees()
+
+        }
+        $scope.addNew = (employee) => {
+            $http.post('/Employee/addNew', JSON.stringify(employee))
+                .then(({ data }) => {
+                    location.reload(true)
+                })
+        }
+        $scope.doneAddEdit = () => {
+            $scope.addNew(currentEmployee)
+        }
+
+        $scope.getEmployees = () => {
+            $http.get('/Employee/getAll')
+                .then(({ data }) => {
+                    for (let employee of data) {
+                        if (employee.employeeType == 1) employee.designation = "admin"
+                        else if (employee.employeeType == 2) employee.designation = "Mechanic"
+                        else employee.designation = "Terminal Manager"
+                    }
+                    $scope.employees = data;
+                    console.log(data)
+                })
+        }
+
+
+    })
+</script>
+

@@ -1,0 +1,246 @@
+﻿
+<!DOCTYPE html>
+<head>
+    <script src="~/Scripts/angular.js" type="text/javascript"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+
+<body class="container" ng-app="routeModule" ng-controller="routeController" ng-init="initApp()">
+    <h2>Create route</h2>
+
+    <div class="modal fade" id="unConnectedModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+
+
+                <div class="modal-header">
+                    <h4 class="modal-title">{{terminal1.name}} and {{terminal2.name}} has no roads in between.</h4>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+
+
+                <div class="modal-body">
+                    <p>Do you wish to add a road?</p>
+                    <button class="btn btn-primary" ng-click="showNewRoadForm()">Yes</button>
+                    <button class="btn btn-danger">No</button>
+
+                    <form ng-if="canShowForm" ng-submit="addNewRoad()">
+                        <input type="text" ng-model="newRoad.name" placeholder="name" />
+                        <input type="text" ng-model="newRoad.length" placeholder="length" />
+                        <button type="submit" class="btn btn-primary">Done</button>
+                    </form>
+
+                </div>
+
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <label for="bus_name">Bus name</label>
+    <select name="bus_name" ng-model="newRoute.busId">
+        <option ng-repeat="bus in availableBusList" value="{{bus.Id}}">{{bus.name}} </option>
+
+    </select>
+    <label for="routeName">Route name</label>
+
+    <input name="routeName" type="text" ng-model="newRoute.name" />
+
+    <table class="table table-striped">
+        <thead>
+            <tr><th>Terminal</th> <th>Arrival time</th> <th>Departure time</th> </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="entry in entries">
+                <td>
+                    <select ng-model="entry.terminalId">
+                        <option ng-repeat="terminal in terminals" value="{{terminal.Id}}">{{terminal.name}} </option>
+                    </select>
+                </td>
+                <td>
+                    <input type="text" ng-model="entry.arrivalTime" placeholder="Arrival time" />
+                </td>
+                <td>
+                    <input type="text" ng-model="entry.departureTime" placeholder="Departure time" />
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <button class="btn btn-primary" ng-click="addNew()">add</button>
+    <button class="btn btn-success" ng-click="done()">Done </button>
+</body>
+
+<script>
+
+    var terminals=[]
+    let app = angular.module('routeModule', [])
+    app.controller('routeController', ($scope, $http) => {
+        $scope.newRoad = { name: "", length: 0 }
+        $scope.canShowForm = false
+        $scope.showNewRoadForm = () => {
+            $scope.canShowForm = true
+        }
+        $scope.schedules = []
+        $scope.terminals = []
+        $scope.routeInfo = {}
+        $scope.availableBusList = []
+        $scope.connections = []
+        $scope.entries = [{
+            stoppageIndex: 1,
+            arrivalTime: 0,
+            departureTime: 0,
+            terminalId: 0
+        }]
+        $scope.dataList=[0]
+        $scope.canShowForm = 0
+        $scope.terminal1 = { Id: 0, name: "" }
+        $scope.terminal2 = { Id: 0, name: "" }
+        $scope.doesAnomalyExist = false
+        $scope.addNew = function () {
+
+          
+            $scope.dataList.push($scope.dataList.length)
+            $scope.entries.push({
+                stoppageIndex: $scope.entries.length + 1,
+                arrivalTime: 0,
+                departureTime: 0,
+                terminalId: 0
+            })
+        }
+        $scope.checkAnomaly = function () {
+            if ($scope.entries.length == 1) return
+            console.log("here")
+            for (let n = 1; n < $scope.entries.length; n++) {
+
+                if (!$scope.findRoad($scope.entries[n - 1].terminalId, $scope.entries[n].terminalId)) {
+                   
+                    $scope.doesAnomalyExist = true
+                    $scope.terminal1 = $scope.terminals.filter(terminal => terminal.Id = $scope.entries[n - 1].terminalId)[0]
+                    $scope.terminal2 = $scope.terminals.filter(terminal => terminal.Id = $scope.entries[n].terminalId)[0]
+                   
+
+                    $('#unConnectedModal').modal('show')
+                }
+            }
+        }
+
+        $scope.findRoad = function (terminal1, terminal2) {
+            
+            for (let connection of $scope.connections) {
+                if (connection.terminal1 == terminal1 && connection.terminal2 == terminal2) return true;
+            }
+            return false
+        }
+        $scope.newRoute = {}
+        $scope.done = function () {
+            $scope.newRoute.start_terminal = $scope.entries[0].terminalId
+            $scope.newRoute.end_terminal = $scope.entries[$scope.entries.length - 1].terminalId
+            console.log($scope.newRoute)
+            console.log($scope.entries)
+            $http.post('/Route/insert', JSON.stringify($scope.newRoute))
+                .then(({ data}) => {
+                    let newRouteId = data.Id
+                   
+                    let promises = []
+                    for (let entry of $scope.entries) {
+                        console.log({
+                            stoppageIndex: entry.stoppageIndex,
+                            arrivalTime: entry.arrivalTime,
+                            departureTime: entry.departureTime,
+                            terminalId: entry.terminalId,
+                            routeId: newRouteId
+                        })
+                        promises.push($http.post('/Schedule/insert', JSON.stringify({
+                            stoppageIndex: entry.stoppageIndex,
+                            arrivalTime: entry.arrivalTime,
+                            departureTime: entry.departureTime,
+                            terminalId: entry.terminalId,
+                            routeId: newRouteId
+                        })))
+                    }
+                    return Promise.all(promises)
+                })
+                .then(() => {
+                    location.reload(true)
+                })
+        }
+
+        $scope.initApp = () => {
+            $scope.getAvailableBusList()
+            $scope.getRoads()
+            $scope.getTerminals()
+        }
+
+        $scope.getAvailableBusList = () => {
+            $http.get('/Bus/getUnAssignedBuses')
+                .then(({ data }) => {
+                    $scope.availableBusList = data;
+                    console.log(data)
+                })
+        }
+        $scope.getRoads = () => {
+            $http.get('/Road/getAllConnections')
+                .then(({ data }) => {
+                    $scope.connections = data;
+                    console.log("cons",data)
+                })
+        }
+
+        $scope.addNewRoad = function () {
+            $http.post('/Road/insert', JSON.stringify({
+                length: $scope.newRoad.length,
+                name: $scope.newRoad.name
+            }))
+                .then(async ({ data }) => {
+                    console.log(data)
+                    return Promise.all([
+                        $http.post('/Road/createConnection', JSON.stringify({
+                            terminal1: $scope.terminal1.Id,
+                            terminal2: $scope.terminal2.Id,
+                            roadId: data.Id
+                        })).then(data => {
+                            $scope.connections.push({
+                                terminal1: $scope.terminal1.Id,
+                                terminal2: $scope.terminal2.Id,
+                                roadId: data.Id
+                            })
+                        }),
+                        $http.post('/Road/createConnection', JSON.stringify({
+                            terminal1: $scope.terminal2.Id,
+                            terminal2: $scope.terminal1.Id,
+                            roadId: data.Id
+                        })).then(data => {
+                            $scope.connections.push({
+                                terminal2: $scope.terminal1.Id,
+                                terminal1: $scope.terminal2.Id,
+                                roadId: data.Id
+                            })
+                        })
+                    ])
+                })
+                .then(() => {
+                    $('#unConnectedModal').modal('hide')
+                    $scope.checkAnomaly()
+                })
+        }
+
+
+        $scope.getTerminals = () => {
+            $http.get('/Terminal/getTerminals')
+                .then(({ data }) => {
+                    terminals = data;
+                    $scope.terminals = data;
+                    console.log(data)
+                })
+        }
+
+    })
+</script>
+
